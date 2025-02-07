@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB: weather_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: qwerty123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: weather_app
+    restart: always
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:qwerty123@db:5432/weather_db
+    ports:
+      - "8081:8081"
+
+volumes:
+  pg_data:
