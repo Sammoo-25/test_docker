@@ -55,7 +55,7 @@ pipeline {
             steps {
                 script {
                     // SSH into the target EC2 instance and run commands
-                    sshagent(credentials: ['ec2-ssh-key']) {
+                    sshagent(['ec2-ssh-key']) {
                         sh """
                             ssh -o StrictHostKeyChecking=no ec2-user@${DEPLOYMENT_EC2_IP} << 'EOF'
                             # Log in to AWS ECR
