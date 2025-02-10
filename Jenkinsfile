@@ -5,6 +5,9 @@ pipeline {
         // Define Docker image name and ECR repository
         DOCKER_IMAGE_NAME = "jenkins-server"
         ECR_REPOSITORY = "183295448322.dkr.ecr.us-east-1.amazonaws.com/jenkins-server"
+
+
+        DEPLOYMENT_EC2_IP = credentials('DEPLOYMENT_EC2_IP')
     }
 
     stages {
