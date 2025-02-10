@@ -42,8 +42,8 @@ pipeline {
             steps {
                 echo 'Installing Python testing tools (flake8, unittest, etc.)...'
                 sh '''
-                    python -m ensurepip --upgrade
-                    python -m pip install --upgrade pip
+                    python3 -m ensurepip --upgrade
+                    python3 -m pip install --upgrade pip
                     pip install flake8 trivy
                 '''
             }
@@ -59,7 +59,7 @@ pipeline {
         stage('Unit Tests') {
             steps {
                 echo 'Running unit tests...'
-                sh 'python -m unittest discover -s tests || exit 1'
+                sh 'python3 -m unittest discover -s tests || exit 1'
             }
         }
 
