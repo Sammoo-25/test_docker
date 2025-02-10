@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // Define Docker image name and ECR repository
-        DOCKER_IMAGE_NAME = "weather-app"
+        DOCKER_IMAGE_NAME = "jenkins-server"
         ECR_REPOSITORY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${DOCKER_IMAGE_NAME}"
     }
 
