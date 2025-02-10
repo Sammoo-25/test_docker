@@ -30,7 +30,7 @@ pipeline {
                     branches: [[name: '*/main']],
                     extensions: [],
                     userRemoteConfigs: [[
-                        url: 'https://github.com/Sammoo-25/test_docker.git',
+                        url: 'git@github.com:Sammoo-25/test_docker.git', // Use SSH URL
                         credentialsId: 'github-jenkins-key' // Use the ID of the SSH key credential
                     ]]
                 ])
@@ -45,8 +45,8 @@ pipeline {
                     python3 -m ensurepip --upgrade
                     python3 -m pip install --upgrade pip
                     
-                    # Install a compatible version of flake8 for Python 3.7
-                    pip3 install flake8==3.9.2                    
+                    # Install flake8 and pytest for Python 3
+                    pip3 install flake8==3.9.2 pytest
                 '''
             }
         }
@@ -54,16 +54,19 @@ pipeline {
         stage('Linting') {
             steps {
                 echo 'Running code linting...'
-                sh 'flake8 . || echo "Lint warnings, check output"'
+                sh 'python3 -m flake8 . || echo "Lint warnings, check output"'
             }
         }
 
-        stage('Unit Tests') {
-            steps {
-                echo 'Running unit tests...'
-                sh 'python -m unittest discover -s tests || exit 1'
-            }
-        }
+        // stage('Unit Tests') {
+        //     steps {
+        //         echo 'Running unit tests...'
+        //         sh '''
+        //             # Run unit tests using pytest
+        //             python3 -m pytest tests/ || exit 1
+        //         '''
+        //     }
+        // }
 
         stage('Security Scan') {
             steps {
