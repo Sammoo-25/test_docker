@@ -60,7 +60,7 @@ pipeline {
                             ssh -o StrictHostKeyChecking=no ec2-user@${DEPLOYMENT_EC2_IP} << 'EOF'
                             # Log in to AWS ECR
                             aws ecr get-login-password --region ${AWS_REGION} | \
-                            docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                            docker login --username AWS --password-stdin ${ECR_REPOSITORY}
 
                             # Pull the latest Docker image
                             docker pull ${ECR_REPOSITORY}:latest
