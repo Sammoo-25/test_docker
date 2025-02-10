@@ -58,15 +58,24 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    sshagent(credentials: ['ec2-ssh-key']) {
+                    // SSH into the target EC2 instance and run commands
+                    sshagent(['ec2-ssh-key']) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ec2-user@${DEPLOYMENT_EC2_IP} << 'EOF'
-                                aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
-                                docker pull ${ECR_REPOSITORY}:latest
-                                docker stop my-running-app || true
-                                docker rm my-running-app || true
-                                docker run -d --name my-running-app -p 80:80 ${ECR_REPOSITORY}:latest
-                            EOF
+                            ssh -o StrictHostKeyChecking=no ec2-user@${DEPLOYMENT_EC2_IP} "
+                                # Log in to AWS ECR
+                                aws ecr get-login-password --region ${AWS_REGION} | \
+                                docker login --username AWS --password-stdin ${ECR_REPOSITORY} &&
+
+                                # Pull the latest Docker image
+                                docker pull ${ECR_REPOSITORY}:latest &&
+
+                                # Stop and remove the existing container (if any)
+                                docker stop ${DOCKER_IMAGE_NAME} || true &&
+                                docker rm ${DOCKER_IMAGE_NAME} || true &&
+
+                                # Run the new container
+                                docker run -d --name ${DOCKER_IMAGE_NAME} -p 80:80 ${ECR_REPOSITORY}:latest
+                            "
                         """
                     }
                 }
