@@ -46,10 +46,7 @@ pipeline {
                     python3 -m pip install --upgrade pip
                     
                     # Install a compatible version of flake8 for Python 3.7
-                    pip3 install flake8==3.9.2
-                    
-                    # Install Trivy security scanner (not a Python package)
-                    sudo curl -sSL https://github.com/aquasecurity/trivy/releases/download/v0.29.0/trivy_0.29.0_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin
+                    pip3 install flake8==3.9.2                    
                 '''
             }
         }
