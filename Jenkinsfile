@@ -6,6 +6,8 @@ pipeline {
         CONTAINER_NAME = 'weather-container'
         SHORT_COMMIT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
         BUILD_TAG = "build-${env.BUILD_NUMBER}-${SHORT_COMMIT}"
+        AWS_ACCOUNT_ID = credentials('AWS_ACCOUNT_ID')
+        AWS_REGION = credentials('AWS_REGION')
         DOCKER_IMAGE = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${BUILD_TAG}"
     }
 
@@ -40,7 +42,7 @@ pipeline {
                     withEnv(["AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}", "AWS_REGION=${AWS_REGION}"]) {
                         sh """
                             echo "Logging into AWS ECR..."
-                            aws ecr get-login-password --region \$AWS_REGION | docker login --username AWS --password-stdin \$AWS_ACCOUNT_ID.dkr.ecr.\$AWS_REGION.amazonaws.com
+                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
                             docker push ${DOCKER_IMAGE}
                         """
                     }
@@ -58,7 +60,7 @@ pipeline {
                             ssh -o StrictHostKeyChecking=no ec2-user@${DEPLOYMENT_EC2_IP} << 'EOF'
                                 set -e
                                 echo "Logging into AWS ECR..."
-                                aws ecr get-login-password --region \$AWS_REGION | docker login --username AWS --password-stdin \$AWS_ACCOUNT_ID.dkr.ecr.\$AWS_REGION.amazonaws.com
+                                aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
                                 echo "Stopping existing container..."
                                 docker stop ${CONTAINER_NAME} || true
