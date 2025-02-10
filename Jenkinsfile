@@ -6,8 +6,7 @@ pipeline {
         CONTAINER_NAME = 'weather-container'
         SHORT_COMMIT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
         BUILD_TAG = "build-${env.BUILD_NUMBER}-${SHORT_COMMIT}"
-        // Initialize DOCKER_IMAGE without values for AWS_ACCOUNT_ID and AWS_REGION for later injection
-        DOCKER_IMAGE = ''
+        DOCKER_IMAGE = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${BUILD_TAG}"
     }
 
     stages {
@@ -29,31 +28,16 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo "Building Docker image with tag: ${DOCKER_IMAGE}"
-                script {
-                    // Dynamically set DOCKER_IMAGE after AWS credentials are injected
-                    withCredentials([string(credentialsId: 'AWS_ACCOUNT_ID', variable: 'AWS_ACCOUNT_ID'),
-                                      string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION')]) {
-                        // Set DOCKER_IMAGE dynamically with the injected environment variables
-                        env.DOCKER_IMAGE = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${BUILD_TAG}"
-                        echo "Building Docker image: ${DOCKER_IMAGE}"
-                        sh "docker build -t ${DOCKER_IMAGE} ."
-                    }
-                }
+                sh "docker build -t ${DOCKER_IMAGE} ."
             }
         }
 
         stage('Push to ECR') {
             steps {
-                echo "Pushing Docker image to AWS ECR: ${DOCKER_IMAGE}"
-                script {
-                    withCredentials([string(credentialsId: 'AWS_ACCOUNT_ID', variable: 'AWS_ACCOUNT_ID'),
-                                      string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION')]) {
-                        sh """
-                            echo "Logging into AWS ECR..."
-                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                            docker push ${DOCKER_IMAGE}
-                        """
-                    }
+                    echo "Pushing Docker image to AWS ECR: ${DOCKER_IMAGE}"
+                    echo "Logging into AWS ECR..."
+                    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                    docker push ${DOCKER_IMAGE}
                 }
             }
         }
