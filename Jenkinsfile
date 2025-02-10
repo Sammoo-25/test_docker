@@ -26,7 +26,7 @@ pipeline {
             steps {
                 echo 'Checking out code from GitHub...'
                 // Use the GitHub SSH credentials to pull code
-                git credentialsId: "${GITHUB_SSH_KEY}", url: 'git@github.com:your-username/your-repo.git'
+                git credentialsId: "${GITHUB_SSH_KEY}", url: 'https://github.com/Sammoo-25/test_docker.git'
             }
         }
 
