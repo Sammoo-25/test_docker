@@ -49,7 +49,7 @@ pipeline {
                     pip3 install flake8==3.9.2
                     
                     # Install Trivy security scanner (not a Python package)
-                    curl -sSL https://github.com/aquasecurity/trivy/releases/download/v0.29.0/trivy_0.29.0_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin
+                    sudo curl -sSL https://github.com/aquasecurity/trivy/releases/download/v0.29.0/trivy_0.29.0_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin
                 '''
             }
         }
