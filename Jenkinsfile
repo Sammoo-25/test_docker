@@ -30,7 +30,7 @@ pipeline {
                     branches: [[name: '*/main']],
                     extensions: [],
                     userRemoteConfigs: [[
-                        url: 'git@github.com:your-username/your-repo.git',
+                        url: 'https://github.com/Sammoo-25/test_docker.git',
                         credentialsId: 'github-jenkins-key' // Use the ID of the SSH key credential
                     ]]
                 ])
