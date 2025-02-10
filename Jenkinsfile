@@ -18,8 +18,8 @@ pipeline {
                     branches: [[name: '*/main']],
                     extensions: [],
                     userRemoteConfigs: [[
-                        url: 'git@github.com:Sammoo-25/test_docker.git', // Use SSH URL
-                        credentialsId: 'github-jenkins-key' // Use the ID of the SSH key credential
+                        url: 'git@github.com:Sammoo-25/test_docker.git',
+                        credentialsId: 'github-jenkins-key'
                     ]]
                 ])
             }
@@ -37,11 +37,13 @@ pipeline {
                 echo "Pushing Docker image to AWS ECR: ${DOCKER_IMAGE}"
                 withCredentials([string(credentialsId: 'AWS_ACCOUNT_ID', variable: 'AWS_ACCOUNT_ID'),
                                  string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION')]) {
-                    sh """
-                        echo "Logging into AWS ECR..."
-                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                        docker push ${DOCKER_IMAGE}
-                    """
+                    withEnv(["AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}", "AWS_REGION=${AWS_REGION}"]) {
+                        sh """
+                            echo "Logging into AWS ECR..."
+                            aws ecr get-login-password --region \$AWS_REGION | docker login --username AWS --password-stdin \$AWS_ACCOUNT_ID.dkr.ecr.\$AWS_REGION.amazonaws.com
+                            docker push ${DOCKER_IMAGE}
+                        """
+                    }
                 }
             }
         }
@@ -50,26 +52,28 @@ pipeline {
             steps {
                 echo "Deploying application to EC2 instance: ${DEPLOYMENT_EC2_IP}"
                 withCredentials([string(credentialsId: 'DEPLOYMENT_EC2_IP', variable: 'DEPLOYMENT_EC2_IP'),
-                                 sshagent(credentials: ['ec2-ssh-key'])]) { // Use sshagent for SSH key
-                    sh """
-                        ssh -o StrictHostKeyChecking=no ec2-user@${DEPLOYMENT_EC2_IP} << 'EOF'
-                            set -e
-                            echo "Logging into AWS ECR..."
-                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                                 sshagent(credentials: ['ec2-ssh-key'])]) {
+                    withEnv(["AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}", "AWS_REGION=${AWS_REGION}"]) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ec2-user@${DEPLOYMENT_EC2_IP} << 'EOF'
+                                set -e
+                                echo "Logging into AWS ECR..."
+                                aws ecr get-login-password --region \$AWS_REGION | docker login --username AWS --password-stdin \$AWS_ACCOUNT_ID.dkr.ecr.\$AWS_REGION.amazonaws.com
 
-                            echo "Stopping existing container..."
-                            docker stop ${CONTAINER_NAME} || true
-                            docker rm ${CONTAINER_NAME} || true
+                                echo "Stopping existing container..."
+                                docker stop ${CONTAINER_NAME} || true
+                                docker rm ${CONTAINER_NAME} || true
 
-                            echo "Pulling latest image: ${DOCKER_IMAGE}"
-                            docker pull ${DOCKER_IMAGE}
+                                echo "Pulling latest image: ${DOCKER_IMAGE}"
+                                docker pull ${DOCKER_IMAGE}
 
-                            echo "Running new container..."
-                            docker run -d --name ${CONTAINER_NAME} -p 80:8081 ${DOCKER_IMAGE}
+                                echo "Running new container..."
+                                docker run -d --name ${CONTAINER_NAME} -p 80:8081 ${DOCKER_IMAGE}
 
-                            echo "Deployment successful!"
-                        EOF
-                    """
+                                echo "Deployment successful!"
+                            EOF
+                        """
+                    }
                 }
             }
         }
