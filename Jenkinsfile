@@ -2,90 +2,79 @@ pipeline {
     agent any
 
     environment {
-        ECR_REPO = 'jenkins-server'
-        CONTAINER_NAME = 'weather-container'
-        ECR_REPO_URL = '183295448322.dkr.ecr.us-east-1.amazonaws.com/gitlab-test'
-        SHORT_COMMIT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-        BUILD_TAG = "build-${env.BUILD_NUMBER}-${SHORT_COMMIT}"
-        // DOCKER_IMAGE will be defined later within stages to ensure credentials are available
+        // Retrieve credentials from Jenkins
+        AWS_ACCOUNT_ID = credentials('AWS_ACCOUNT_ID')
+        AWS_REGION = credentials('AWS_REGION')
+        DEPLOYMENT_EC2_IP = credentials('DEPLOYMENT_EC2_IP')
+        GITHUB_SSH_KEY = credentials('github-jenkins-key')
+        EC2_SSH_KEY = credentials('ec2-ssh-key')
+        
+        // Define Docker image name and ECR repository
+        DOCKER_IMAGE_NAME = "weather-app"
+        ECR_REPOSITORY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${DOCKER_IMAGE_NAME}"
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                echo 'Checking out code from GitHub...'
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    extensions: [],
-                    userRemoteConfigs: [[
-                        url: 'git@github.com:Sammoo-25/test_docker.git',
-                        credentialsId: 'github-jenkins-key'
-                    ]]
-                ])
-            }
-        }
-
-        stage('Build Docker Image') {
+        // Stage 1: Clone the repository from GitHub
+        stage('Clone Repository') {
             steps {
                 script {
-                    withCredentials([
-                        string(credentialsId: 'AWS_ACCOUNT_ID', variable: 'AWS_ACCOUNT_ID'),
-                        string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION')
-                    ]) {                        
-                        echo "Building Docker image with tag: ${ECR_REPO_URL}:${BUILD_TAG}"
-                        sh "docker build -t ${ECR_REPO_URL}:${BUILD_TAG} ."
-                    }
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: '*/main']], // Replace with your branch name
+                        extensions: [],
+                        userRemoteConfigs: [[
+                            url: 'https://github.com/Sammoo-25/test_docker.git', // Replace with your GitHub repo URL
+                            credentialsId: 'github-jenkins-key'
+                        ]]
+                    ])
                 }
             }
         }
 
-        stage('Push to ECR') {
+        // Stage 2: Build Docker image and push to AWS ECR
+        stage('Build and Push Docker Image') {
             steps {
                 script {
-                    withCredentials([
-                        string(credentialsId: 'AWS_ACCOUNT_ID', variable: 'AWS_ACCOUNT_ID'),
-                        string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION')
-                    ]) {                        
-                        echo "Pushing Docker image to AWS ECR: ${dockerImage}"
-                        sh """
-                            echo "Logging into AWS ECR..."
-                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO_URL}
-                            docker push ${ECR_REPO_URL}:${BUILD_TAG}
-                        """
-                    }
+                    // Log in to AWS ECR
+                    sh """
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                        docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                    """
+
+                    // Build Docker image
+                    sh "docker build -t ${DOCKER_IMAGE_NAME} ."
+
+                    // Tag Docker image
+                    sh "docker tag ${DOCKER_IMAGE_NAME}:latest ${ECR_REPOSITORY}:latest"
+
+                    // Push Docker image to ECR
+                    sh "docker push ${ECR_REPOSITORY}:latest"
                 }
             }
         }
 
+        // Stage 3: Deploy to target EC2 instance
         stage('Deploy to EC2') {
             steps {
                 script {
-                    withCredentials([
-                        string(credentialsId: 'DEPLOYMENT_EC2_IP', variable: 'DEPLOYMENT_EC2_IP'),
-                        sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'EC2_SSH_KEY'),
-                        string(credentialsId: 'AWS_ACCOUNT_ID', variable: 'AWS_ACCOUNT_ID'),
-                        string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION')
-                    ]) {
-                        def dockerImage = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${BUILD_TAG}"
-                        echo "Deploying application to EC2 instance: ${DEPLOYMENT_EC2_IP}"
+                    // SSH into the target EC2 instance and run commands
+                    sshagent(['ec2-ssh-key']) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no -i ${EC2_SSH_KEY} ec2-user@${DEPLOYMENT_EC2_IP} << 'EOF'
-                                set -e
-                                echo "Logging into AWS ECR..."
-                                aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                            ssh -o StrictHostKeyChecking=no ec2-user@${DEPLOYMENT_EC2_IP} << 'EOF'
+                            # Log in to AWS ECR
+                            aws ecr get-login-password --region ${AWS_REGION} | \
+                            docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
-                                echo "Stopping existing container..."
-                                docker stop ${CONTAINER_NAME} || true
-                                docker rm ${CONTAINER_NAME} || true
+                            # Pull the latest Docker image
+                            docker pull ${ECR_REPOSITORY}:latest
 
-                                echo "Pulling latest image: ${dockerImage}"
-                                docker pull ${dockerImage}
+                            # Stop and remove the existing container (if any)
+                            docker stop ${DOCKER_IMAGE_NAME} || true
+                            docker rm ${DOCKER_IMAGE_NAME} || true
 
-                                echo "Running new container..."
-                                docker run -d --name ${CONTAINER_NAME} -p 80:8081 ${dockerImage}
-
-                                echo "Deployment successful!"
+                            # Run the new container
+                            docker run -d --name ${DOCKER_IMAGE_NAME} -p 80:80 ${ECR_REPOSITORY}:latest
                             EOF
                         """
                     }
@@ -96,10 +85,10 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline execution successful!'
+            echo 'Pipeline completed successfully!'
         }
         failure {
-            echo 'Pipeline execution failed!'
+            echo 'Pipeline failed!'
         }
     }
 }
