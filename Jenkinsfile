@@ -25,14 +25,13 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Checking out code from GitHub...'
-                sh 'ssh-keyscan github.com >> ~/.ssh/known_hosts'  // Add GitHub's SSH key to known hosts
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/main']],
                     extensions: [],
                     userRemoteConfigs: [[
-                        url: 'https://github.com/Sammoo-25/test_docker.git',
-                        credentialsId: 'github-jenkins-key'
+                        url: 'git@github.com:your-username/your-repo.git',
+                        credentialsId: 'github-jenkins-key' // Use the ID of the SSH key credential
                     ]]
                 ])
             }
@@ -42,9 +41,15 @@ pipeline {
             steps {
                 echo 'Installing Python testing tools (flake8, unittest, etc.)...'
                 sh '''
+                    # Ensure pip and setuptools are upgraded
                     python3 -m ensurepip --upgrade
                     python3 -m pip install --upgrade pip
-                    pip3 install flake8 trivy
+                    
+                    # Install a compatible version of flake8 for Python 3.7
+                    pip3 install flake8==3.9.2
+                    
+                    # Install Trivy security scanner (not a Python package)
+                    curl -sSL https://github.com/aquasecurity/trivy/releases/download/v0.29.0/trivy_0.29.0_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin
                 '''
             }
         }
@@ -59,7 +64,7 @@ pipeline {
         stage('Unit Tests') {
             steps {
                 echo 'Running unit tests...'
-                sh 'python3 -m unittest discover -s tests || exit 1'
+                sh 'python -m unittest discover -s tests || exit 1'
             }
         }
 
@@ -90,10 +95,6 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 echo "Deploying application to EC2 instance: ${DEPLOYMENT_EC2_IP}"
-
-                // Add EC2's SSH key to known hosts
-                sh 'ssh-keyscan ${DEPLOYMENT_EC2_IP} >> ~/.ssh/known_hosts'
-
                 sh """
                     ssh -o StrictHostKeyChecking=no -i ${EC2_SSH_KEY} ec2-user@${DEPLOYMENT_EC2_IP} << 'EOF'
                         set -e
