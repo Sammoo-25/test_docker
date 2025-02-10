@@ -25,15 +25,14 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Checking out code from GitHub...'
-
-                // Checkout code using GitHub SSH credentials
+                sh 'ssh-keyscan github.com >> ~/.ssh/known_hosts'  // Add GitHub's SSH key to known hosts
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/main']],
                     extensions: [],
                     userRemoteConfigs: [[
-                        url: 'https://github.com/Sammoo-25/test_docker.git',
-                        credentialsId: 'github-jenkins-key' // Use the ID of the SSH key credential
+                        url: 'git@github.com:your-username/your-repo.git',
+                        credentialsId: 'github-jenkins-key'
                     ]]
                 ])
             }
@@ -43,6 +42,7 @@ pipeline {
             steps {
                 echo 'Installing Python testing tools (flake8, unittest, etc.)...'
                 sh '''
+                    python -m ensurepip --upgrade
                     python -m pip install --upgrade pip
                     pip install flake8 trivy
                 '''
