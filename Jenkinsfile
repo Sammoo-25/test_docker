@@ -25,8 +25,17 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Checking out code from GitHub...'
-                // Use the GitHub SSH credentials to pull code
-                git credentialsId: "${GITHUB_SSH_KEY}", url: 'https://github.com/Sammoo-25/test_docker.git'
+
+                // Checkout code using GitHub SSH credentials
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    extensions: [],
+                    userRemoteConfigs: [[
+                        url: 'git@github.com:your-username/your-repo.git',
+                        credentialsId: 'github-jenkins-key' // Use the ID of the SSH key credential
+                    ]]
+                ])
             }
         }
 
@@ -81,6 +90,10 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 echo "Deploying application to EC2 instance: ${DEPLOYMENT_EC2_IP}"
+
+                // Add EC2's SSH key to known hosts
+                sh 'ssh-keyscan ${DEPLOYMENT_EC2_IP} >> ~/.ssh/known_hosts'
+
                 sh """
                     ssh -o StrictHostKeyChecking=no -i ${EC2_SSH_KEY} ec2-user@${DEPLOYMENT_EC2_IP} << 'EOF'
                         set -e
