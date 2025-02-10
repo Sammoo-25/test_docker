@@ -8,6 +8,7 @@ pipeline {
 
 
         DEPLOYMENT_EC2_IP = credentials('DEPLOYMENT_EC2_IP')
+        AWS_REGION = credentials('AWS_REGION')
     }
 
     stages {
