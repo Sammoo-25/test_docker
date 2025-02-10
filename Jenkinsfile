@@ -40,8 +40,8 @@ pipeline {
                                     string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION')]) {
                         sh """
                             echo "Logging into AWS ECR..."
-                            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-                            docker push $DOCKER_IMAGE
+                            aws ecr get-login-password --region AWS_REGION | docker login --username AWS --password-stdin AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com
+                            docker push DOCKER_IMAGE
                         """
                     }
                 }
