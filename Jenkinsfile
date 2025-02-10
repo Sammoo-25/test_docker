@@ -2,15 +2,8 @@ pipeline {
     agent any
 
     environment {
-        // Retrieve credentials from Jenkins
-        AWS_ACCOUNT_ID = credentials('AWS_ACCOUNT_ID')
-        AWS_REGION = credentials('AWS_REGION')
-        DEPLOYMENT_EC2_IP = credentials('DEPLOYMENT_EC2_IP')
-        GITHUB_SSH_KEY = credentials('github-jenkins-key')
-        EC2_SSH_KEY = credentials('ec2-ssh-key')
-        
         // Define Docker image name and ECR repository
-        DOCKER_IMAGE_NAME = "weather-app"
+        DOCKER_IMAGE_NAME = "my-app-image"
         ECR_REPOSITORY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${DOCKER_IMAGE_NAME}"
     }
 
@@ -24,7 +17,7 @@ pipeline {
                         branches: [[name: '*/main']], // Replace with your branch name
                         extensions: [],
                         userRemoteConfigs: [[
-                            url: 'https://github.com/Sammoo-25/test_docker.git', // Replace with your GitHub repo URL
+                            url: 'git@github.com:your-username/your-repo.git', // Replace with your GitHub repo URL
                             credentialsId: 'github-jenkins-key'
                         ]]
                     ])
@@ -37,10 +30,13 @@ pipeline {
             steps {
                 script {
                     // Log in to AWS ECR
-                    sh """
-                        aws ecr get-login-password --region ${AWS_REGION} | \
-                        docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                    """
+                    withCredentials([string(credentialsId: 'AWS_ACCOUNT_ID', variable: 'AWS_ACCOUNT_ID'),
+                                    string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION')]) {
+                        sh """
+                            aws ecr get-login-password --region ${AWS_REGION} | \
+                            docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                        """
+                    }
 
                     // Build Docker image
                     sh "docker build -t ${DOCKER_IMAGE_NAME} ."
