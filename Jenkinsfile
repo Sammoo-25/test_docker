@@ -43,8 +43,8 @@ pipeline {
             steps {
                 echo "Pushing Docker image to AWS ECR: ${DOCKER_IMAGE}"
                 withCredentials([
-                    string(credentialsId: 'AVR_ACCOUNT_ID', variable: 'AWS_ACCOUNT_ID'),
-                    string(credentialsId: 'AVR_REGION', variable: 'AWS_REGION')
+                    string(credentialsId: 'AWS_ACCOUNT_ID', variable: 'AWS_ACCOUNT_ID'),
+                    string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION')
                 ]) {
                     sh '''
                         echo "Logging into AWS ECR..."
