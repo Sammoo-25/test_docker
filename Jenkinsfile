@@ -5,7 +5,9 @@ pipeline {
         ECR_REPO = 'jenkins-server'
         CONTAINER_NAME = 'weather-container'
         ECR_REPO_URL = '183295448322.dkr.ecr.us-east-1.amazonaws.com/gitlab-test'
-        // AWS credentials will be handled within stages
+        SHORT_COMMIT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+        BUILD_TAG = "build-${env.BUILD_NUMBER}-${SHORT_COMMIT}"
+        // DOCKER_IMAGE will be defined later within stages to ensure credentials are available
     }
 
     stages {
@@ -27,13 +29,13 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Initialize SHORT_COMMIT and BUILD_TAG within the script block
-                    def shortCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    def buildTag = "build-${env.BUILD_NUMBER}-${shortCommit}"
-                    def dockerImage = "${ECR_REPO_URL}:${buildTag}"
-
-                    echo "Building Docker image with tag: ${dockerImage}"
-                    sh "docker build -t ${dockerImage} ."
+                    withCredentials([
+                        string(credentialsId: 'AWS_ACCOUNT_ID', variable: 'AWS_ACCOUNT_ID'),
+                        string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION')
+                    ]) {                        
+                        echo "Building Docker image with tag: ${ECR_REPO_URL}:${BUILD_TAG}"
+                        sh "docker build -t ${ECR_REPO_URL}:${BUILD_TAG} ."
+                    }
                 }
             }
         }
@@ -44,13 +46,12 @@ pipeline {
                     withCredentials([
                         string(credentialsId: 'AWS_ACCOUNT_ID', variable: 'AWS_ACCOUNT_ID'),
                         string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION')
-                    ]) {
-                        def dockerImage = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${buildTag}"
+                    ]) {                        
                         echo "Pushing Docker image to AWS ECR: ${dockerImage}"
                         sh """
                             echo "Logging into AWS ECR..."
-                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                            docker push ${dockerImage}
+                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO_URL}
+                            docker push ${ECR_REPO_URL}:${BUILD_TAG}
                         """
                     }
                 }
@@ -66,7 +67,7 @@ pipeline {
                         string(credentialsId: 'AWS_ACCOUNT_ID', variable: 'AWS_ACCOUNT_ID'),
                         string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION')
                     ]) {
-                        def dockerImage = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${buildTag}"
+                        def dockerImage = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${BUILD_TAG}"
                         echo "Deploying application to EC2 instance: ${DEPLOYMENT_EC2_IP}"
                         sh """
                             ssh -o StrictHostKeyChecking=no -i ${EC2_SSH_KEY} ec2-user@${DEPLOYMENT_EC2_IP} << 'EOF'
