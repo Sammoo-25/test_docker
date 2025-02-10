@@ -44,7 +44,7 @@ pipeline {
                 sh '''
                     python3 -m ensurepip --upgrade
                     python3 -m pip install --upgrade pip
-                    pip install flake8 trivy
+                    pip3 install flake8 trivy
                 '''
             }
         }
