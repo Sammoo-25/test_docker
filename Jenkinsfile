@@ -73,7 +73,7 @@ pipeline {
                                 docker rm ${DOCKER_IMAGE_NAME} || true &&
 
                                 # Run the new container
-                                docker run -d --name ${DOCKER_IMAGE_NAME} -p 82:82 ${ECR_REPOSITORY}:latest
+                                docker run -d --name ${DOCKER_IMAGE_NAME} -p 8081:8081 ${ECR_REPOSITORY}:latest
                             "
                         """
                     }
