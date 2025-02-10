@@ -8,8 +8,8 @@ pipeline {
         BUILD_TAG = "build-${env.BUILD_NUMBER}-${SHORT_COMMIT}"
         
         // Use Jenkins credentials for AWS and deployment details
-        AWS_ACCOUNT_ID = credentials('AVR_ACCOUNT_ID') // Corrected credential ID
-        AWS_REGION = credentials('AVR_REGION') // Corrected credential ID
+        AWS_ACCOUNT_ID = credentials('AWS_ACCOUNT_ID') // Corrected credential ID
+        AWS_REGION = credentials('AWS_REGION') // Corrected credential ID
         DEPLOYMENT_EC2_IP = credentials('DEPLOYMENT_EC2_IP') // Corrected credential ID
         
         // Generate dynamic Docker image tag
