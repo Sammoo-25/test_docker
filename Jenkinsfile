@@ -6,7 +6,7 @@ pipeline {
         DOCKER_IMAGE_NAME = "jenkins-server"
         ECR_REPOSITORY = "183295448322.dkr.ecr.us-east-1.amazonaws.com/jenkins-server"
 
-
+        // Define deployment EC2 IP and AWS region
         DEPLOYMENT_EC2_IP = credentials('DEPLOYMENT_EC2_IP')
         AWS_REGION = credentials('AWS_REGION')
     }
@@ -61,8 +61,8 @@ pipeline {
                     // SSH into the target EC2 instance and run commands
                     sshagent(['ec2-ssh-key']) {
                         sh """
-                            # Log in to AWS ECR
                             ssh -o StrictHostKeyChecking=no ec2-user@${DEPLOYMENT_EC2_IP} "
+                                # Log in to AWS ECR
                                 aws ecr get-login-password --region ${AWS_REGION} | \
                                 docker login --username AWS --password-stdin ${ECR_REPOSITORY} &&
 
@@ -81,6 +81,7 @@ pipeline {
                 }
             }
         }
+    }
 
     post {
         success {
