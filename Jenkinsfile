@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // Define Docker image name and ECR repository
-        DOCKER_IMAGE_NAME = "my-app-image"
+        DOCKER_IMAGE_NAME = "weather-app"
         ECR_REPOSITORY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${DOCKER_IMAGE_NAME}"
     }
 
@@ -17,7 +17,7 @@ pipeline {
                         branches: [[name: '*/main']], // Replace with your branch name
                         extensions: [],
                         userRemoteConfigs: [[
-                            url: 'git@github.com:your-username/your-repo.git', // Replace with your GitHub repo URL
+                            url: 'https://github.com/Sammoo-25/test_docker.git', // Replace with your GitHub repo URL
                             credentialsId: 'github-jenkins-key'
                         ]]
                     ])
