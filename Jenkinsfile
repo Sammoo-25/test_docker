@@ -12,6 +12,16 @@ pipeline {
     }
 
     stages {
+        stage('Set Image Tag') {
+            steps {
+                script {
+                    // Define dynamic Docker tag using Jenkins build number
+                    env.IMAGE_TAG = "latest-${BUILD_NUMBER}"
+                    echo "Docker image tag set to: ${env.IMAGE_TAG}"
+                }
+            }
+        }
+
         // Stage 1: Clone the repository from GitHub
         stage('Clone Repository') {
             steps {
@@ -45,11 +55,11 @@ pipeline {
                     // Build Docker image
                     sh "docker build -t ${DOCKER_IMAGE_NAME} ."
 
-                    // Tag Docker image
-                    sh "docker tag ${DOCKER_IMAGE_NAME}:latest ${ECR_REPOSITORY}:latest"
+                    // Tag Docker image with dynamic IMAGE_TAG
+                    sh "docker tag ${DOCKER_IMAGE_NAME} ${ECR_REPOSITORY}:${env.IMAGE_TAG}"
 
                     // Push Docker image to ECR
-                    sh "docker push ${ECR_REPOSITORY}:latest"
+                    sh "docker push ${ECR_REPOSITORY}:${env.IMAGE_TAG}"
                 }
             }
         }
@@ -66,14 +76,14 @@ pipeline {
                                 aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPOSITORY} &&
 
                                 # Pull the latest Docker image
-                                docker pull ${ECR_REPOSITORY}:latest &&
+                                docker pull ${ECR_REPOSITORY}:${env.IMAGE_TAG} &&
 
                                 # Stop and remove the existing container (if any)
                                 docker stop ${DOCKER_IMAGE_NAME} || true &&
                                 docker rm ${DOCKER_IMAGE_NAME} || true &&
 
                                 # Run the new container
-                                docker run -d --name ${DOCKER_IMAGE_NAME} -p 8081:8081 ${ECR_REPOSITORY}:latest
+                                docker run -d --name ${DOCKER_IMAGE_NAME} -p 8081:8081 ${ECR_REPOSITORY}:${env.IMAGE_TAG}
                             "
                         """
                     }
